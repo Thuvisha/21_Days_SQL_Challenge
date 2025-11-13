@@ -11,6 +11,10 @@ select * from test.services_weekly limit 10;
 
 select * from test.staff limit 10;
 
+select distinct role from test.staff;
+
+select role from test.staff;
+
 select * from test.staff_schedule limit 10;
 
 
