@@ -108,25 +108,57 @@ select * from murdermystery.keycard_logs ; -- log_id, employee_id, room, entry_t
 
 -- 1. Identify where and when the crime happened October 15, 2025, at 9:00 PM
 
-select * from murdermystery.keycard_logs where entry_time Between '2025-10-15 20:00:00' and'2025-10-15 21:00:00';
+select * from murdermystery.keycard_logs where entry_time Between '2025-10-15 20:50:00' and'2025-10-15 21:00:00';
 
-select  *  from murdermystery.alibis a join murdermystery.keycard_logs kl on a.employee_id = kl.employee_id 
-where  a.claim_time Between '2025-10-15 20:00:00' and'2025-10-15 21:00:00'
- and kl.entry_time Between '2025-10-15 20:00:00' and'2025-10-15 21:00:00';
+select e.employee_id,e.name,kl.room,kl.entry_time,kl.exit_time
+ from murdermystery.employees e join murdermystery.keycard_logs  kl on  e.employee_id = kl.employee_id
+where kl.entry_time Between '2025-10-15 20:00:00' and'2025-10-15 21:00:00';
+
+select   e.employee_id,e.name,a.claimed_location,a. claim_time,kl.room,kl.entry_time,kl.exit_time 
+from murdermystery.alibis a join murdermystery.keycard_logs kl on a.employee_id = kl.employee_id 
+join murdermystery.employees e on e.employee_id = kl.employee_id
+where  a.claim_time Between kl.entry_time and kl.exit_time;
+ -- and kl.entry_time Between '2025-10-15 20:50:00' and'2025-10-15 21:00:00';
 
 -- Investigate suspicious calls made around the time
-select * from murdermystery.calls where call_time Between '2025-10-15 20:00:00' and'2025-10-15 21:00:00';
+select * from murdermystery.calls c  join murdermystery.keycard_logs kl on c.caller_id = kl.employee_id
+where call_time Between kl.entry_time and kl.exit_time;
 
-select  * from murdermystery.calls c join murdermystery.keycard_logs kl on kl.employee_id = c.caller_id 
+select  e.employee_id,e.name,c.call_time,kl.entry_time,kl.exit_time from murdermystery.calls c join murdermystery.keycard_logs kl on kl.employee_id = c.caller_id 
+join murdermystery.employees e on e.employee_id = kl.employee_id
 where c.call_time 
-Between '2025-10-15 20:00:00' and'2025-10-15 21:00:00' and kl.entry_time Between '2025-10-15 20:00:00' and'2025-10-15 21:00:00';
+Between '2025-10-15 20:00:00' and'2025-10-15 21:00:00' and kl.entry_time Between '2025-10-15 20:50:00' and'2025-10-15 21:00:00';
 
-select * from murdermystery.evidence where room In (select  a.claimed_location  from murdermystery.alibis a join murdermystery.keycard_logs kl on a.employee_id = kl.employee_id 
-where  a.claim_time Between '2025-10-15 20:00:00' and'2025-10-15 21:00:00');
+-- Match evidence with movements and claims
+select * from murdermystery.evidence where room In (select a.claimed_location from murdermystery.alibis a join murdermystery.keycard_logs kl on a.employee_id = kl.employee_id 
+where  a.claim_time Between '2025-10-15 20:50:00' and'2025-10-15 21:00:00' and a.claimed_location <> kl.room);
 
-select e.name from murdermystery.employees e join murdermystery.keycard_logs kl on e.employee_id = kl.employee_id
+-- Combine all findings to identify the killer
+
+with failed_alibis as(select   e.employee_id,e.name,a.claimed_location,a. claim_time,kl.room,kl.entry_time,kl.exit_time 
+from murdermystery.alibis a join murdermystery.keycard_logs kl on a.employee_id = kl.employee_id 
+join murdermystery.employees e on e.employee_id = kl.employee_id
+where  a.claim_time Between kl.entry_time and kl.exit_time),
+
+key_log as (select e.employee_id,e.name,kl.room,kl.entry_time,kl.exit_time
+ from murdermystery.employees e join murdermystery.keycard_logs  kl on  e.employee_id = kl.employee_id
+where kl.entry_time Between '2025-10-15 20:00:00' and'2025-10-15 21:00:00'),
+
+sus_calls as (select  e.employee_id,e.name,c.call_time,kl.entry_time,kl.exit_time from murdermystery.calls c join murdermystery.keycard_logs kl on kl.employee_id = c.caller_id 
+join murdermystery.employees e on e.employee_id = kl.employee_id
+where c.call_time 
+Between '2025-10-15 20:00:00' and'2025-10-15 21:00:00' and kl.entry_time Between '2025-10-15 20:50:00' and'2025-10-15 21:00:00')
+
+select distinct k_l.name as Killer from failed_alibis f_a join key_log k_l on k_l.employee_id = f_a.employee_id 
+join sus_calls s_c on s_c.employee_id = f_a.employee_id;
+
+
+
+
+
+select e.name as Killer from murdermystery.employees e join murdermystery.keycard_logs kl on e.employee_id = kl.employee_id
  join murdermystery.alibis a
-on a.employee_id = e.employee_id where kl.entry_time Between '2025-10-15 20:00:00' and'2025-10-15 21:00:00'
+on a.employee_id = e.employee_id where kl.entry_time Between '2025-10-15 20:50:00' and'2025-10-15 21:00:00'
 
 
 
